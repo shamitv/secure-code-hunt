@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs";
+import Redis from "ioredis";
 import { AuthenticatedUser } from "../models/User";
 import { AuditEventProducer } from "../mq/AuditEventProducer";
 import { UserRepository } from "../repositories/UserRepository";
@@ -8,15 +9,16 @@ export class AuthService {
   constructor(
     private readonly users: UserRepository,
     private readonly tokens: TokenService,
-    private readonly auditEvents: AuditEventProducer
+    private readonly auditEvents: AuditEventProducer,
+    private readonly redis: Redis
   ) {}
 
-  register(username: string, password: string) {
+  async register(username: string, password: string) {
     return this.users.savePatient(username, password);
   }
 
-  login(username: string, password: string) {
-    const user = this.users.findByUsername(username);
+  async login(username: string, password: string) {
+    const user = await this.users.findByUsername(username);
     if (!user || !bcrypt.compareSync(password, user.passwordHash)) {
       return undefined;
     }
@@ -30,7 +32,24 @@ export class AuthService {
     };
   }
 
-  requireUser(token: string | undefined) {
+  async logout(token: string | undefined) {
+    if (token) {
+      try {
+        await this.redis.set(`session:blacklist:${token}`, "1", "EX", 7200);
+      } catch {
+        // non-critical
+      }
+    }
+  }
+
+  async requireUser(token: string | undefined) {
+    if (!token) return undefined;
+    try {
+      const blacklisted = await this.redis.get(`session:blacklist:${token}`);
+      if (blacklisted) return undefined;
+    } catch {
+      // if redis is down, proceed; non-critical
+    }
     return this.tokens.verify(token);
   }
 }

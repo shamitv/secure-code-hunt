@@ -9,7 +9,6 @@
       "category": "Injection",
       "location": "src/search/ParkingSearchClient.js",
       "method": "searchByQueryString",
-      "line_range": "7-31",
       "description": "Parking search embeds user input directly in Elasticsearch query_string syntax.",
       "severity": "high",
       "cwe": "CWE-74"
@@ -17,29 +16,63 @@
     {
       "owasp_id": "A04",
       "category": "Insecure Design",
-      "location": "src/services/BookingService.js",
-      "method": "book",
-      "line_range": "8-21",
-      "description": "Booking creation accepts totalCost directly from the client without server-side recalculation.",
+      "location": "src/producers/BookingProducer.js",
+      "method": "publishBooking",
+      "description": "Booking producer accepts totalCost from client without server-side recalculation, passes it through Kafka.",
       "severity": "medium",
       "cwe": "CWE-20"
     },
     {
       "owasp_id": "A09",
       "category": "Security Logging and Monitoring Failures",
-      "location": "src/services/BookingService.js",
-      "method": "cancel",
-      "line_range": "24-36",
-      "description": "Booking cancellation persists a critical booking mutation without publishing a security audit event.",
+      "location": "src/consumers/BookingConsumer.js",
+      "method": "processBooking",
+      "description": "Booking consumer persists booking mutations without publishing a security audit event.",
       "severity": "low",
       "cwe": "CWE-778"
+    },
+    {
+      "owasp_id": "A01",
+      "category": "Broken Access Control",
+      "location": "src/controllers/BookingController.js",
+      "method": "listAll, getById",
+      "description": "Booking list and detail endpoints return records for any user without ownership verification.",
+      "severity": "medium",
+      "cwe": "CWE-639"
+    },
+    {
+      "owasp_id": "A05",
+      "category": "Security Misconfiguration",
+      "location": "src/controllers/AdminController.js",
+      "method": "debugConfig",
+      "description": "Unauthenticated debug endpoint returns internal service URLs (DB, Redis, Kafka, ES).",
+      "severity": "medium",
+      "cwe": "CWE-200"
+    },
+    {
+      "owasp_id": "A10",
+      "category": "Server-Side Request Forgery",
+      "location": "src/services/SpotPhotoService.js",
+      "method": "importPhoto",
+      "description": "Spot photo import fetches user-supplied URL without hostname validation, enabling SSRF to internal services.",
+      "severity": "medium",
+      "cwe": "CWE-918"
+    },
+    {
+      "owasp_id": "A02",
+      "category": "Cryptographic Failures",
+      "location": "src/config/appConfig.js",
+      "method": "(constant)",
+      "description": "JWT signing secret is hardcoded as a module-level constant visible in source code.",
+      "severity": "low",
+      "cwe": "CWE-798"
     }
   ],
   "chained_attacks": [
     {
       "chain_id": "chain-01",
-      "chain_name": "Elasticsearch Query Injection \u2192 Client-Controlled Pricing \u2192 Missing Audit Logs \u2192 Data Modification",
-      "attack_scenario": "An attacker uses Elasticsearch query_string syntax to broaden parking search results, books a premium spot with a client-controlled zero or negative total cost, and cancels bookings without an audit event.",
+      "chain_name": "ES Injection → Client-Controlled Pricing in Kafka → Missing Audit in Consumer → Data Modification",
+      "attack_scenario": "An attacker uses ES query_string injection to discover premium spots, submits a booking with client-controlled zero cost via Kafka async boundary, and the consumer persists it without audit logging.",
       "impact": "data_modification",
       "components": [
         {
@@ -54,20 +87,81 @@
         {
           "step": 2,
           "owasp_id": "A04",
-          "description": "Booking price is trusted from the client instead of recalculated from spot rate and duration.",
-          "location": "src/services/BookingService.js",
-          "method": "book",
+          "description": "Booking producer passes client-supplied totalCost into Kafka event without server-side recalculation.",
+          "location": "src/producers/BookingProducer.js",
+          "method": "publishBooking",
           "severity": "medium",
           "cwe": "CWE-20"
         },
         {
           "step": 3,
           "owasp_id": "A09",
-          "description": "Booking cancellation is persisted without a security audit event.",
-          "location": "src/services/BookingService.js",
-          "method": "cancel",
+          "description": "Booking consumer inserts booking into PostgreSQL without emitting a security audit event.",
+          "location": "src/consumers/BookingConsumer.js",
+          "method": "processBooking",
           "severity": "low",
           "cwe": "CWE-778"
+        }
+      ]
+    },
+    {
+      "chain_id": "chain-02",
+      "chain_name": "Debug Config Leak → SSRF Internal Pivot → Lateral Movement",
+      "attack_scenario": "An attacker calls the unauthenticated debug endpoint to learn internal service URLs, then uses the SSRF photo import to reach internal Redis/Kafka/ES containers.",
+      "impact": "lateral_movement",
+      "components": [
+        {
+          "step": 1,
+          "owasp_id": "A05",
+          "description": "Admin debug endpoint returns internal service topology without authentication.",
+          "location": "src/controllers/AdminController.js",
+          "method": "debugConfig",
+          "severity": "low",
+          "cwe": "CWE-200"
+        },
+        {
+          "step": 2,
+          "owasp_id": "A10",
+          "description": "Spot photo import fetches user-supplied URL — attacker supplies internal Redis/Kafka/ES URL.",
+          "location": "src/services/SpotPhotoService.js",
+          "method": "importPhoto",
+          "severity": "medium",
+          "cwe": "CWE-918"
+        }
+      ]
+    },
+    {
+      "chain_id": "chain-03",
+      "chain_name": "Hardcoded JWT → Weak Token Validation → Cross-DB IDOR on Export → DB Exfiltration",
+      "attack_scenario": "An attacker extracts the hardcoded JWT secret from source code, forges an admin token through weak validation, and uses the cross-DB export endpoint to exfiltrate all user PII including license plates, contact info, and payment details.",
+      "impact": "db_exfiltration",
+      "components": [
+        {
+          "step": 1,
+          "owasp_id": "A02",
+          "description": "JWT secret hardcoded in config enables offline token forgery.",
+          "location": "src/config/appConfig.js",
+          "method": "(constant)",
+          "severity": "low",
+          "cwe": "CWE-798"
+        },
+        {
+          "step": 2,
+          "owasp_id": "A07",
+          "description": "JWT middleware validates signature only — ignores sub/role claims against resource ownership.",
+          "location": "src/middleware/jwtAuth.js",
+          "method": "verifyToken",
+          "severity": "medium",
+          "cwe": "CWE-287"
+        },
+        {
+          "step": 3,
+          "owasp_id": "A01",
+          "description": "Export endpoint joins PostgreSQL and MongoDB without resource-ownership check.",
+          "location": "src/services/ExportService.js",
+          "method": "exportBookingReport",
+          "severity": "medium",
+          "cwe": "CWE-639"
         }
       ]
     }
@@ -84,6 +178,26 @@
     {
       "location": "src/referenceGuards.js",
       "description": "Reference callback allowlist guard demonstrates safe URL validation."
+    },
+    {
+      "location": "src/controllers/BookingController.js",
+      "description": "Booking cancellation endpoint verifies user ownership before allowing mutation."
+    },
+    {
+      "location": "src/controllers/HealthController.js",
+      "description": "Health endpoint returns only { status: 'ok' } with no internal detail."
+    },
+    {
+      "location": "src/services/GeocodingService.js",
+      "description": "Geocoding service validates hostname against allowlist before making external HTTP requests."
+    },
+    {
+      "location": "src/controllers/AuthController.js",
+      "description": "Refresh token endpoint validates issuer, audience, and expiry claims with rotating secret."
+    },
+    {
+      "location": "src/middleware/adminOnly.js",
+      "description": "Admin guard correctly validates session role with proper check."
     }
   ]
 }

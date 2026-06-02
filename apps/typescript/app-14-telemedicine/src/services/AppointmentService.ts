@@ -12,30 +12,47 @@ export class AppointmentService {
     private readonly auditEvents: AuditEventProducer
   ) {}
 
-  listForUser(user: AuthenticatedUser) {
+  async listForUser(user: AuthenticatedUser) {
     if (user.role === "PATIENT") {
-      return this.appointments.findForPatient(user.userId).map(({ doctorNotes, ...summary }) => summary);
+      const appts = await this.appointments.findForPatient(user.userId);
+      return appts.map(({ doctorNotes, ...summary }) => summary);
     }
     if (user.role === "DOCTOR") {
-      return this.appointments.findForDoctor(user.userId).map(({ doctorNotes, ...summary }) => summary);
+      const appts = await this.appointments.findForDoctor(user.userId);
+      return appts.map(({ doctorNotes, ...summary }) => summary);
     }
     return this.appointments.findAll();
   }
 
-  getAppointmentDetail(appointmentId: number) {
-    const cached = this.cache.get(appointmentId);
+  async getAppointmentDetail(appointmentId: number) {
+    const cached = await this.cache.get(appointmentId);
     if (cached) {
       return cached;
     }
 
     // CHAIN LINK 2 (chain-01): Appointment notes are loaded by ID without owner or doctor checks.
     // VULNERABILITY A01: Patient notes endpoint exposes records through an IDOR.
-    const appointment = this.appointments.findById(appointmentId);
+    const appointment = await this.appointments.findById(appointmentId);
     if (appointment) {
-      this.cache.put(appointment);
+      await this.cache.put(appointment);
       this.search.indexAppointment(appointment);
       this.auditEvents.publish("appointment.detail.read", { appointmentId });
     }
+    return appointment;
+  }
+
+  async bookAppointment(data: {
+    patientId: number;
+    doctorId: number;
+    date: string;
+    timeSlot: string;
+  }) {
+    const appointment = await this.appointments.create(data);
+    this.auditEvents.publish("appointment.created", {
+      appointmentId: appointment.id,
+      patientId: data.patientId,
+      doctorId: data.doctorId
+    });
     return appointment;
   }
 }

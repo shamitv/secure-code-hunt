@@ -13,6 +13,8 @@ HR Tech & Recruitment
 - Multer (in-memory file upload)
 - Adm-zip (zip extraction)
 
+> For system architecture details, see [docs/architecture.md](docs/architecture.md).
+
 ## Features
 
 For chained vulnerability scenarios, see [scenarios.md](scenarios.md).

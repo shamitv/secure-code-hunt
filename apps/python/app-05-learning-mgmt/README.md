@@ -9,6 +9,8 @@ Education Technology (EdTech)
 ## Tech Stack
 Python, Flask, PostgreSQL, MongoDB, Apache Kafka (Redpanda), Pickle (for course import), psycopg2, pymongo, kafka-python
 
+> For system architecture details, see [docs/architecture.md](docs/architecture.md).
+
 ## Features
 
 - User authentication with role-based access (Student, Instructor, Admin)

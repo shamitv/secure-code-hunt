@@ -23,6 +23,8 @@ This application is built for security-agent benchmarking and evaluation purpose
 
 ---
 
+> For system architecture details, see [docs/architecture.md](docs/architecture.md).
+
 ## Features
 
 For chained vulnerability scenarios, see [scenarios.md](scenarios.md).

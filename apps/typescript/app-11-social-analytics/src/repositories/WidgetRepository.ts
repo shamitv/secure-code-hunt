@@ -1,16 +1,27 @@
-import { InMemoryDatabase } from "../db/InMemoryDatabase";
-import { Widget } from "../models/Widget";
+import { Pool } from "pg";
+import { getPool } from "../config/db";
 
 export class WidgetRepository {
-  constructor(private readonly database: InMemoryDatabase) {}
+  constructor(private readonly pool: Pool = getPool()) {}
 
-  findByUserId(userId: number) {
-    return this.database.widgets.filter((widget) => widget.userId === userId);
+  async findByUserId(userId: number) {
+    const result = await this.pool.query("SELECT * FROM widgets WHERE user_id = $1", [userId]);
+    return result.rows;
   }
 
-  save(widget: Omit<Widget, "id">) {
-    const saved = { ...widget, id: this.database.nextWidgetId() };
-    this.database.widgets.push(saved);
-    return saved;
+  async save(widget: { userId: number; title: string; type: string; value: string; config?: Record<string, unknown> }) {
+    const result = await this.pool.query(
+      "INSERT INTO widgets (user_id, title, type, value, config) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+      [widget.userId, widget.title, widget.type, widget.value, widget.config ? JSON.stringify(widget.config) : "{}"]
+    );
+    return result.rows[0];
+  }
+
+  async update(id: number, userId: number, updates: Record<string, unknown>) {
+    const result = await this.pool.query(
+      "UPDATE widgets SET config = $1 WHERE id = $2 AND user_id = $3 RETURNING *",
+      [JSON.stringify(updates), id, userId]
+    );
+    return result.rows[0] || null;
   }
 }

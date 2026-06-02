@@ -1,17 +1,37 @@
+import Redis from "ioredis";
 import { Appointment } from "../models/Appointment";
 
 export class AppointmentCache {
-  private readonly appointments = new Map<number, Appointment>();
+  constructor(private readonly redis: Redis) {}
 
-  get(id: number) {
-    return this.appointments.get(id);
+  async get(id: number): Promise<Appointment | undefined> {
+    try {
+      const data = await this.redis.get(`appointment:${id}`);
+      if (!data) return undefined;
+      return JSON.parse(data);
+    } catch {
+      return undefined;
+    }
   }
 
-  put(appointment: Appointment) {
-    this.appointments.set(appointment.id, appointment);
+  async put(appointment: Appointment): Promise<void> {
+    try {
+      await this.redis.set(
+        `appointment:${appointment.id}`,
+        JSON.stringify(appointment),
+        "EX",
+        3600
+      );
+    } catch {
+      // cache failure is non-critical
+    }
   }
 
-  clear(id: number) {
-    this.appointments.delete(id);
+  async clear(id: number): Promise<void> {
+    try {
+      await this.redis.del(`appointment:${id}`);
+    } catch {
+      // cache failure is non-critical
+    }
   }
 }

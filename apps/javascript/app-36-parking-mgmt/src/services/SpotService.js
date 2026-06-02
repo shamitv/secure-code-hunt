@@ -5,18 +5,18 @@ class SpotService {
     this.events = events;
   }
 
-  createSpot(input) {
-    const spot = this.spots.save(input);
+  async createSpot(input) {
+    const spot = await this.spots.save(input);
     this.events.publish('security.audit.spot.created', { spotId: spot.id, spotNumber: spot.spotNumber });
     console.log(`[SECURITY AUDIT] New parking spot ${spot.spotNumber} registered at ${new Date().toISOString()}`);
     return spot;
   }
 
-  search(rawQuery) {
+  async search(rawQuery) {
     return this.searchClient.searchByQueryString(rawQuery);
   }
 
-  findById(id) {
+  async findById(id) {
     return this.spots.findById(id);
   }
 }

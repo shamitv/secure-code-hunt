@@ -1,0 +1,30 @@
+CREATE TABLE IF NOT EXISTS users (
+  id SERIAL PRIMARY KEY,
+  username VARCHAR(100) UNIQUE NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  role VARCHAR(20) NOT NULL DEFAULT 'CUSTOMER',
+  license_plate VARCHAR(20),
+  contact_email VARCHAR(255),
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS spots (
+  id SERIAL PRIMARY KEY,
+  spot_number VARCHAR(20) UNIQUE NOT NULL,
+  type VARCHAR(20) NOT NULL,
+  price_rate NUMERIC(8,2) NOT NULL,
+  floor INTEGER DEFAULT 0,
+  is_accessible BOOLEAN DEFAULT false,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS bookings (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id),
+  spot_id INTEGER REFERENCES spots(id),
+  start_time TIMESTAMP DEFAULT NOW(),
+  duration_hours NUMERIC(5,2) NOT NULL,
+  total_cost NUMERIC(10,2) NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+  created_at TIMESTAMP DEFAULT NOW()
+);

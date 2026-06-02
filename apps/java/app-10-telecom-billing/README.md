@@ -28,6 +28,8 @@ This application intentionally contains OWASP Top 10 vulnerabilities for securit
 
 **Complexity status**: Full-stack enterprise upgrade complete (2 chains, 8 standalone vulns, 5 decoys, 5 OWASP categories). See [upgrade plan](../../../docs/plans/complexity/app-10-telecom-billing/README.md).
 
+> For system architecture details, see [docs/architecture.md](docs/architecture.md).
+
 ---
 
 ## Chained Vulnerability Scenario

@@ -12,6 +12,8 @@ Corporate Operations / Finance & Expense Management.
 - **Database**: SQLite3 (in-memory)
 - **Authentication**: Cookie-based sessions
 
+> For system architecture details, see [docs/architecture.md](docs/architecture.md).
+
 ## Features
 
 For chained vulnerability scenarios, see [scenarios.md](scenarios.md).

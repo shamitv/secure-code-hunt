@@ -10,10 +10,13 @@ Smart home and IoT device fleet management.
 | Layer | Technology |
 |-------|------------|
 | Backend | Node.js, Express, JavaScript |
-| Database / Cache | In-memory repositories and session cache, PostgreSQL and Redis in Docker Compose |
-| Search / Events | Device search client, in-process event producer/consumer, Elasticsearch and Redpanda in Docker Compose |
+| Database | PostgreSQL 16 (pg), InMemoryStore fallback |
+| Cache | Redis 7 (ioredis) |
 | HTTP Client | Axios |
+| WebSocket | ws |
 | Containerisation | Docker, Docker Compose |
+
+> For system architecture details, see [docs/architecture.md](docs/architecture.md).
 
 ## Features
 - User registration and login
@@ -21,14 +24,16 @@ Smart home and IoT device fleet management.
 - View public device profiles by ID
 - Refresh device status from custom URLs
 - Internal telemetry endpoint for device diagnostics
-- Device search indexing hook and event publisher
+- Device telemetry history with filter query support
+- Live WebSocket telemetry dashboard with real-time charts
+- Diagnostics search via Elasticsearch query_string
 
 ## Security Benchmarking
 The vulnerabilities in this application are intentional. Refer to `.vulns` for the complete machine-readable vulnerability manifest.
 
 ---
 
-## Chained Vulnerability Scenario
+## Chained Vulnerability Scenarios
 
 ### Chain: "Debug Config Leak → HTTP SSRF → Plaintext Device Token Exposure → Lateral Movement"
 
@@ -44,6 +49,19 @@ An authenticated user triggers a command error that leaks an internal telemetry 
 
 **Combined Impact**: The attacker pivots from the public dashboard into internal telemetry and obtains device tokens, enabling lateral movement.
 
+### Chain: "IDOR Telemetry Access → SQL Injection → Database Exfiltration"
+
+An authenticated user exploits missing device ownership checks to read any device's telemetry, then uses SQL injection in the telemetry filter parameter to dump database tables.
+
+| Step | Issue | Severity (standalone) | OWASP | Location |
+|------|-------|-----------------------|-------|----------|
+| 1 | Device telemetry endpoint returns telemetry without verifying device ownership | Medium | A01 | `src/controllers/DeviceController.js` → `getDeviceTelemetry()` |
+| 2 | Telemetry query filter concatenates raw SQL allowing injection | Medium | A03 | `src/repositories/TelemetryRepository.js` → `queryWithFilter()` |
+
+**Attack narrative**: The attacker sends `GET /api/devices/2/telemetry` to read telemetry for a device they don't own (IDOR). Then sends `POST /api/devices/1/telemetry/query` with `{"filter": "1; UNION SELECT id,username,password_hash FROM users--"}` to inject SQL and extract user credentials from the database.
+
+**Combined Impact**: The attacker exfiltrates user password hashes and device secrets from the PostgreSQL database.
+
 ---
 
 ## API Endpoints
@@ -56,7 +74,14 @@ An authenticated user triggers a command error that leaks an internal telemetry 
 | POST | `/api/devices/command` | Session | Run commands |
 | POST | `/api/devices/refresh` | Session | Query custom status URLs |
 | GET | `/api/devices/:id` | Session | View public device profile |
+| GET | `/api/devices/:id/telemetry` | Session | View device telemetry history |
+| POST | `/api/devices/:id/telemetry/query` | Session | Query telemetry with filter |
+| GET | `/api/devices/:id/telemetry/range` | Session | Query telemetry by time range |
 | GET | `/api/internal/telemetry` | Token | Internal telemetry endpoint |
+| GET | `/api/diagnostics/search` | Session | Elasticsearch device log search (vulnerable to DSL injection) |
+| GET | `/api/diagnostics/search/safe` | Session | Elasticsearch device log search (safe — parameterized match) |
+| WS | `/ws/telemetry` | None | Live device telemetry stream (unauthenticated) |
+| GET | `/dashboard` | None | HTML telemetry dashboard |
 
 ## Running Locally
 ```bash

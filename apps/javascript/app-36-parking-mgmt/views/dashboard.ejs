@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Parking Admin Dashboard</title>
+  <link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body>
+  <header>
+    <h1>Parking Management — Admin Dashboard</h1>
+    <nav><a href="/api/admin/dashboard">Dashboard</a></nav>
+  </header>
+  <main>
+    <section>
+      <h2>Parking Spot Vacancy</h2>
+      <table>
+        <thead><tr><th>Spot</th><th>Type</th><th>Rate</th><th>Status</th></tr></thead>
+        <tbody>
+          <% spots.forEach(spot => { %>
+          <tr>
+            <td><%= spot.spotNumber %></td>
+            <td><%= spot.type %></td>
+            <td>$<%= spot.priceRate %>/hr</td>
+            <td class="status-<%= spot.booked ? 'booked' : 'available' %>">
+              <%= spot.booked ? 'Booked' : 'Available' %>
+            </td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </section>
+    <section>
+      <h2>Pricing Rules</h2>
+      <ul>
+        <% rules.forEach(rule => { %>
+        <li><%= rule.ruleType %> — multiplier: <%= rule.multiplier %></li>
+        <% }) %>
+      </ul>
+    </section>
+    <section>
+      <h2>Export Bookings</h2>
+      <form id="export-form">
+        <label>Booking IDs (comma-separated): <input type="text" name="bookingIds" id="bookingIds"></label>
+        <button type="submit">Export</button>
+      </form>
+      <pre id="export-result"></pre>
+    </section>
+  </main>
+  <script>
+    document.getElementById('export-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const ids = document.getElementById('bookingIds').value.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+      const token = prompt('JWT Token:');
+      const res = await fetch('/api/admin/exports/bookings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify({ bookingIds: ids })
+      });
+      document.getElementById('export-result').textContent = JSON.stringify(await res.json(), null, 2);
+    });
+  </script>
+</body>
+</html>

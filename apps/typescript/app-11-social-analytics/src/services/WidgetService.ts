@@ -5,6 +5,7 @@ interface CreateWidgetInput {
   title: string;
   type: string;
   value: string;
+  config?: Record<string, unknown>;
 }
 
 export class WidgetService {
@@ -13,13 +14,22 @@ export class WidgetService {
     private readonly events: AnalyticsEventProducer
   ) {}
 
-  listWidgets(userId: number) {
+  async listWidgets(userId: number) {
     return this.widgets.findByUserId(userId);
   }
 
-  createWidget(userId: number, input: CreateWidgetInput) {
-    const widget = this.widgets.save({ userId, ...input });
+  async createWidget(userId: number, input: CreateWidgetInput) {
+    const widget = await this.widgets.save({ userId, ...input });
     this.events.publish("widget.created", { widgetId: widget.id, userId });
     return widget;
+  }
+
+  async updateWidgetConfig(id: number, userId: number, config: Record<string, unknown>) {
+    const allowedKeys = ["position", "size", "refreshInterval", "colorScheme"];
+    const filtered: Record<string, unknown> = {};
+    for (const key of allowedKeys) {
+      if (key in config) filtered[key] = config[key];
+    }
+    return this.widgets.update(id, userId, filtered);
   }
 }

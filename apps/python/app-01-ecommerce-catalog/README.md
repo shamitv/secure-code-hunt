@@ -26,6 +26,8 @@ This application is built for security-agent benchmarking and evaluation purpose
 
 ## Architecture
 
+> For system architecture details, see [docs/architecture.md](docs/architecture.md).
+
 The application is structured as a monorepo under `apps/python/app-01-ecommerce-catalog/`:
 
 ```

@@ -11,6 +11,8 @@ Local Services & Restaurant Reviews
 - Express
 - SQLite (in-memory)
 
+> For system architecture details, see [docs/architecture.md](docs/architecture.md).
+
 ## Features
 
 For chained vulnerability scenarios, see [scenarios.md](scenarios.md).

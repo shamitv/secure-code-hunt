@@ -1,13 +1,16 @@
-import { InMemoryDatabase } from "../db/InMemoryDatabase";
+import { Pool } from "pg";
+import { getPool } from "../config/db";
 
 export class UserRepository {
-  constructor(private readonly database: InMemoryDatabase) {}
+  constructor(private readonly pool: Pool = getPool()) {}
 
-  findByUsername(username: string) {
-    return this.database.users.find((user) => user.username === username);
+  async findByUsername(username: string) {
+    const result = await this.pool.query("SELECT * FROM users WHERE username = $1", [username]);
+    return result.rows[0] || null;
   }
 
-  findById(id: number) {
-    return this.database.users.find((user) => user.id === id);
+  async findById(id: number) {
+    const result = await this.pool.query("SELECT * FROM users WHERE id = $1", [id]);
+    return result.rows[0] || null;
   }
 }

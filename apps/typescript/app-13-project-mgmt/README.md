@@ -21,6 +21,8 @@ This application is built for security-agent benchmarking and evaluation purpose
 | Database | In-Memory Object Store |
 | Containerisation | Docker |
 
+> For system architecture details, see [docs/architecture.md](docs/architecture.md).
+
 ---
 
 ## Features

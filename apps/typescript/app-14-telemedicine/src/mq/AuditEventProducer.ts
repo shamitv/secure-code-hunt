@@ -1,9 +1,16 @@
-import { AuditEventConsumer } from "./AuditEventConsumer";
+import { Producer } from "kafkajs";
 
 export class AuditEventProducer {
-  constructor(private readonly consumer: AuditEventConsumer) {}
+  constructor(private readonly producer: Producer) {}
 
-  publish(topic: string, payload: Record<string, unknown>) {
-    this.consumer.consume({ topic, payload });
+  async publish(topic: string, payload: Record<string, unknown>): Promise<void> {
+    try {
+      await this.producer.send({
+        topic,
+        messages: [{ value: JSON.stringify({ topic, ...payload }) }]
+      });
+    } catch (err) {
+      console.error("Failed to publish audit event:", err);
+    }
   }
 }

@@ -1,9 +1,16 @@
-import { AnalyticsEventConsumer } from "./AnalyticsEventConsumer";
+import { Producer } from "kafkajs";
+import { getProducer, SOCIAL_EVENTS_TOPIC } from "../config/kafka";
 
 export class AnalyticsEventProducer {
-  constructor(private readonly consumer: AnalyticsEventConsumer) {}
+  private producer: Producer | null = null;
 
-  publish(topic: string, payload: Record<string, unknown>) {
-    this.consumer.consume({ topic, payload });
+  async publish(eventType: string, payload: Record<string, unknown>) {
+    if (!this.producer) {
+      this.producer = await getProducer();
+    }
+    await this.producer.send({
+      topic: SOCIAL_EVENTS_TOPIC,
+      messages: [{ value: JSON.stringify({ ...payload, event_type: eventType, timestamp: new Date().toISOString() }) }]
+    });
   }
 }

@@ -3,6 +3,7 @@ export interface Appointment {
   patientId: number;
   doctorId: number;
   date: string;
+  timeSlot: string;
   status: string;
   doctorNotes: string;
 }

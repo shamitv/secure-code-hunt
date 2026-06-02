@@ -5,5 +5,6 @@ export function createWidgetRoutes(controller: WidgetController) {
   const router = Router();
   router.get("/", controller.list);
   router.post("/", controller.create);
+  router.put("/:id/config", controller.update);
   return router;
 }

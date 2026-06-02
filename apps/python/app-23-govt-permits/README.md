@@ -25,6 +25,7 @@ The vulnerabilities in this application are intentional. Refer to [.vulns](file:
 
 ---
 
+> For system architecture details, see [docs/architecture.md](docs/architecture.md).
 
 ## API Endpoints
 

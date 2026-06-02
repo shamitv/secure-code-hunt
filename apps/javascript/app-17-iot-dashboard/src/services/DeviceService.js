@@ -7,7 +7,7 @@ class DeviceService {
     this.events = events;
   }
 
-  runCommand(deviceId, command) {
+  async runCommand(deviceId, command) {
     const device = this.devices.findById(deviceId);
     if (!device) {
       const error = new Error('Device not found.');
@@ -17,8 +17,8 @@ class DeviceService {
     if (command.includes('TRIGGER-ERROR')) {
       throw new Error('Command failed: Connection timed out to Device Gateway.');
     }
-    this.search.indexDevice(device);
-    this.events.publish('device.command', { deviceId, command });
+    await this.search.indexDevice(device);
+    await this.events.publish('device.command', { deviceId, command });
     return { message: 'Command sent to device successfully.', deviceId, command };
   }
 

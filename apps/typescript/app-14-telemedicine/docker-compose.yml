@@ -9,7 +9,8 @@ services:
       DATABASE_URL: postgres://telemed:telemedpass@postgres:5432/telemeddb
       REDIS_URL: redis://redis:6379/14
       KAFKA_BROKERS: kafka:9092
-      PATIENT_SEARCH_URL: http://elasticsearch:9200/patient-notes
+      PATIENT_SEARCH_URL: http://elasticsearch:9200
+      MONGO_URI: mongodb://mongodb:27017/telemed_clinical
     depends_on:
       postgres:
         condition: service_healthy
@@ -18,6 +19,8 @@ services:
       kafka:
         condition: service_healthy
       elasticsearch:
+        condition: service_healthy
+      mongodb:
         condition: service_healthy
     healthcheck:
       test:
@@ -31,7 +34,7 @@ services:
       start_period: 20s
 
   postgres:
-    image: postgres:16-alpine
+    image: public.ecr.aws/docker/library/postgres:16-alpine
     environment:
       POSTGRES_DB: telemeddb
       POSTGRES_USER: telemed
@@ -43,7 +46,7 @@ services:
       retries: 10
 
   redis:
-    image: redis:7-alpine
+    image: public.ecr.aws/docker/library/redis:7-alpine
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -51,26 +54,21 @@ services:
       retries: 10
 
   kafka:
-    image: docker.redpanda.com/redpandadata/redpanda:v24.1.9
-    command:
-      - redpanda
-      - start
-      - --overprovisioned
-      - --smp
-      - "1"
-      - --memory
-      - 512M
-      - --reserve-memory
-      - 0M
-      - --node-id
-      - "0"
-      - --check=false
-      - --kafka-addr
-      - PLAINTEXT://0.0.0.0:9092
-      - --advertise-kafka-addr
-      - PLAINTEXT://kafka:9092
+    image: public.ecr.aws/bitnami/kafka:3.7.0
+    environment:
+      KAFKA_CFG_NODE_ID: "0"
+      KAFKA_CFG_PROCESS_ROLES: controller,broker
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: 0@kafka:9093
+      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_KRAFT_CLUSTER_ID: abcdefghijklmnopqrstuv
+      ALLOW_PLAINTEXT_LISTENER: "yes"
+      KAFKA_HEAP_OPTS: -Xmx256m -Xms256m
     healthcheck:
-      test: ["CMD-SHELL", "rpk cluster info --brokers localhost:9092 >/dev/null 2>&1"]
+      test: ["CMD-SHELL", "kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1"]
       interval: 10s
       timeout: 5s
       retries: 12
@@ -86,3 +84,11 @@ services:
       interval: 10s
       timeout: 5s
       retries: 12
+
+  mongodb:
+    image: public.ecr.aws/docker/library/mongo:6
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 10

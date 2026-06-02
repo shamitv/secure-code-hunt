@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IoT Device Dashboard</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0e17; color: #c8d6e5; font-family: 'Courier New', monospace; padding: 20px; }
+  h1 { color: #00d2ff; font-size: 1.4em; margin-bottom: 8px; }
+  .grid { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+  .card { background: #111827; border: 1px solid #1e293b; border-radius: 8px; padding: 16px; }
+  .card h2 { color: #00d2ff; font-size: 1em; margin-bottom: 12px; border-bottom: 1px solid #1e293b; padding-bottom: 6px; }
+  #ws-indicator { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+  #ws-indicator.connected { background: #10b981; }
+  #ws-indicator.disconnected { background: #ef4444; }
+  canvas { width: 100%; height: 250px; background: #0f172a; border-radius: 4px; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
+  th, td { padding: 6px 8px; text-align: left; border-bottom: 1px solid #1e293b; }
+  th { color: #64748b; font-weight: normal; }
+  .online { color: #10b981; }
+  .offline { color: #ef4444; }
+  input, select { background: #0f172a; border: 1px solid #1e293b; color: #c8d6e5; padding: 8px; border-radius: 4px; font-family: inherit; width: 100%; margin-bottom: 8px; }
+  button { background: #00d2ff; color: #0a0e17; border: none; padding: 8px 16px; border-radius: 4px; font-family: inherit; font-weight: bold; cursor: pointer; }
+  button:hover { background: #00b8e6; }
+  pre { background: #0f172a; border: 1px solid #1e293b; border-radius: 4px; padding: 8px; font-size: 0.8em; max-height: 200px; overflow: auto; white-space: pre-wrap; }
+  .cmd-row { display: flex; gap: 8px; align-items: center; }
+  .cmd-row select, .cmd-row input { flex: 1; margin-bottom: 0; }
+</style>
+</head>
+<body>
+<h1><span id="ws-indicator" class="disconnected"></span>IoT Device Dashboard</h1>
+
+<div class="grid">
+  <div class="card">
+    <h2>Live Telemetry</h2>
+    <canvas id="chart"></canvas>
+  </div>
+  <div class="card">
+    <h2>Device Status</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Name</th><th>Status</th><th>Temp</th></tr></thead>
+      <tbody id="status-table"></tbody>
+    </table>
+  </div>
+  <div class="card">
+    <h2>Diagnostics Search</h2>
+    <input id="search-input" placeholder="ES query string (e.g. *:* or message:Thermostat)">
+    <button id="search-btn">Search Logs</button>
+    <pre id="search-results">Results will appear here...</pre>
+  </div>
+  <div class="card">
+    <h2>Command Console</h2>
+    <div class="cmd-row">
+      <select id="device-select"><option value="1">Smart Thermostat</option><option value="2">Security Gateway</option></select>
+      <input id="command-input" placeholder="Command (e.g. TRIGGER-ERROR)">
+    </div>
+    <button id="command-btn">Send Command</button>
+    <pre id="command-result">Result will appear here...</pre>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('chart');
+const ctx = canvas.getContext('2d');
+const statusTbody = document.getElementById('status-table');
+const searchInput = document.getElementById('search-input');
+const searchBtn = document.getElementById('search-btn');
+const searchResults = document.getElementById('search-results');
+const deviceSelect = document.getElementById('device-select');
+const commandInput = document.getElementById('command-input');
+const commandBtn = document.getElementById('command-btn');
+const commandResult = document.getElementById('command-result');
+const wsIndicator = document.getElementById('ws-indicator');
+
+const dataPoints = { 1: [], 2: [] };
+const MAX_POINTS = 50;
+
+function resizeCanvas() {
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width = rect.width;
+  canvas.height = 250;
+}
+
+function drawChart() {
+  resizeCanvas();
+  const w = canvas.width;
+  const h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+
+  const padding = 40;
+  const chartW = w - padding * 2;
+  const chartH = h - padding * 2;
+
+  ctx.strokeStyle = '#1e293b';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(padding, padding, chartW, chartH);
+
+  const colors = ['#00d2ff', '#10b981'];
+  Object.keys(dataPoints).forEach((deviceId, idx) => {
+    const points = dataPoints[deviceId];
+    if (points.length < 2) return;
+
+    const color = colors[idx % colors.length];
+    const values = points.map(p => p.temperature);
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const range = max - min || 1;
+
+    ctx.beginPath();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    points.forEach((p, i) => {
+      const x = padding + (i / (points.length - 1)) * chartW;
+      const y = padding + chartH - ((p.temperature - min) / range) * chartH;
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+  });
+}
+
+function updateStatus(data) {
+  const deviceId = data.device_id;
+  const existing = statusTbody.querySelector(`tr[data-device-id="${deviceId}"]`);
+  if (existing) {
+    existing.innerHTML = `<td>${data.device_id}</td><td>${data.device_name || '-'}</td><td class="online">ONLINE</td><td>${data.temperature ?? '-'}°C</td>`;
+  } else {
+    const tr = document.createElement('tr');
+    tr.setAttribute('data-device-id', deviceId);
+    tr.innerHTML = `<td>${data.device_id}</td><td>${data.device_name || '-'}</td><td class="online">ONLINE</td><td>${data.temperature ?? '-'}°C</td>`;
+    statusTbody.appendChild(tr);
+  }
+}
+
+function handleWsMessage(data) {
+  if (data.type === 'telemetry_update') {
+    const deviceId = data.device_id;
+    if (!dataPoints[deviceId]) dataPoints[deviceId] = [];
+    dataPoints[deviceId].push({ temperature: data.temperature, humidity: data.humidity });
+    if (dataPoints[deviceId].length > MAX_POINTS) dataPoints[deviceId].shift();
+    drawChart();
+    updateStatus(data);
+  } else if (data.type === 'device_status') {
+    updateStatus(data);
+  }
+}
+
+let ws;
+
+function connectWs() {
+  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(`${protocol}//${location.host}/ws/telemetry`);
+  ws.onopen = () => {
+    wsIndicator.className = 'connected';
+    wsIndicator.style.background = '#10b981';
+  };
+  ws.onclose = () => {
+    wsIndicator.className = 'disconnected';
+    wsIndicator.style.background = '#ef4444';
+    setTimeout(connectWs, 5000);
+  };
+  ws.onmessage = (event) => {
+    try {
+      handleWsMessage(JSON.parse(event.data));
+    } catch (_) {}
+  };
+}
+
+searchBtn.addEventListener('click', async () => {
+  const q = searchInput.value;
+  if (!q) return;
+  searchResults.textContent = 'Searching...';
+  try {
+    const res = await fetch(`/api/diagnostics/search?q=${encodeURIComponent(q)}`);
+    const data = await res.json();
+    searchResults.textContent = JSON.stringify(data, null, 2);
+  } catch (err) {
+    searchResults.textContent = `Error: ${err.message}`;
+  }
+});
+
+commandBtn.addEventListener('click', async () => {
+  const deviceId = parseInt(deviceSelect.value, 10);
+  const command = commandInput.value;
+  if (!command) return;
+  commandResult.textContent = 'Sending...';
+  try {
+    const res = await fetch('/api/devices/command', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ deviceId, command })
+    });
+    const data = await res.json();
+    commandResult.textContent = JSON.stringify(data, null, 2);
+  } catch (err) {
+    commandResult.textContent = `Error: ${err.message}`;
+  }
+});
+
+connectWs();
+drawChart();
+</script>
+</body>
+</html>

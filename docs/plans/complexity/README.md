@@ -24,10 +24,10 @@ Below is the index of the selected applications, their architectural upgrades, a
 | **06** | Enterprise HR Management System | Java (Spring Boot) | Postgres, Elasticsearch, Kafka, MVC, Log4j RCE Listener | [Plan](app-06-hr-management/expansion-plan.md) - [Phase 1](app-06-hr-management/phase-01/plan.md) ... [Phase 4](app-06-hr-management/phase-04/plan.md) | 4 | Implemented |
 | **07** | Airline Booking System | Java (Spring Boot) | Seat-hold workflow, staff boarding UI, contextual chain coverage, README / `.vulns` compliance | [App README](../../../apps/java/app-07-airline-booking/README.md) - [Manifest](../../../apps/java/app-07-airline-booking/.vulns) | N/A | Implemented (in-place rewrite) |
 | **10** | Telecom Billing Platform | Java (Spring Boot) | Postgres, TimescaleDB, Kafka, MVC, Multi-Tier Tariffs | [Plan](app-10-telecom-billing/expansion-plan.md) - [Phase 1](app-10-telecom-billing/phase-01/plan.md) ... [Phase 5](app-10-telecom-billing/phase-05/plan.md) | 5 | Implemented |
-| **11** | Social Media Analytics Dashboard | TypeScript (Express) | Postgres, Timeseries, Elasticsearch, Kafka, MVC, WebSockets | _Phase structure pending_ | - | Pending |
-| **14** | Telemedicine Appointment System | TypeScript (Express) | Postgres, MongoDB, Kafka, MVC, Calendar validation | _Phase structure pending_ | - | Pending |
-| **17** | IoT Device Dashboard | JavaScript (Express) | Postgres, InfluxDB, OpenSearch, Kafka, MVC, WebSockets | _Phase structure pending_ | - | Pending |
-| **36** | Parking Management System | JavaScript (Express) | Postgres, MongoDB, Elasticsearch, Kafka, Dynamic Pricing | _Phase structure pending_ | - | Pending |
+| **11** | Social Media Analytics Dashboard | TypeScript (Express) | Postgres, Timeseries, Elasticsearch, Kafka, MVC, WebSockets | [Plan](app-11-social-analytics/expansion-plan.md) - [Phase 1](app-11-social-analytics/phase-01/plan.md) ... [Phase 6](app-11-social-analytics/phase-06/plan.md) | 6 | Implemented |
+| **14** | Telemedicine Appointment System | TypeScript (Express) | Postgres, MongoDB, Redis, Kafka, Elasticsearch, MVC, Schedule Validation, Clinical Notes | [Plan](app-14-telemedicine/expansion-plan.md) - [Phase 1](app-14-telemedicine/phase-01/plan.md) ... [Phase 5](app-14-telemedicine/phase-05/plan.md) | 5 | Implemented |
+| **17** | IoT Device Dashboard | JavaScript (Express) | Postgres, Redis, Redpanda, Elasticsearch, MVC, WebSockets, Dashboard | [Plan](app-17-iot-dashboard/expansion-plan.md) - [Phase 1](app-17-iot-dashboard/phase-01/plan.md) ... [Phase 4](app-17-iot-dashboard/phase-04/plan.md) | 4 | Planned |
+| **36** | Parking Management System | JavaScript (Express) | Postgres, MongoDB, Redis, Kafka, Elasticsearch, JWT, Admin Dashboard | [Plan](app-36-parking-mgmt/expansion-plan.md) - [Phase 1](app-36-parking-mgmt/phase-01/plan.md) ... [Phase 5](app-36-parking-mgmt/phase-05/plan.md) | 5 | Planned |
 
 ---
 
@@ -93,6 +93,7 @@ app-<NN>-<name>/
 Phase count is determined by each app's specific scope - not forced to a fixed number:
 
 - **5 phases**: Apps with existing codebases needing infrastructure upgrade + business logic + UI (app-01, app-05)
+- **6 phases**: Apps with existing codebases + Docker Compose already in place, needing incremental real-service wiring + new vuln/chain planting (app-11)
 - **TBD**: Other apps may need 4-6 phases depending on current code maturity and target complexity
 
 ### When Adding a New Phase-Structured Plan

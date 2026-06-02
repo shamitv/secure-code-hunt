@@ -8,27 +8,27 @@ class AuthService {
     this.events = events;
   }
 
-  register(username, password) {
+  async register(username, password) {
     return this.users.saveCustomer(username, password);
   }
 
-  login(username, password) {
-    const user = this.users.findByUsername(username);
+  async login(username, password) {
+    const user = await this.users.findByUsername(username);
     if (!user || !bcrypt.compareSync(password, user.passwordHash)) {
       return undefined;
     }
     const sessionId = crypto.randomBytes(16).toString('hex');
     const publicUser = { id: user.id, username: user.username, role: user.role };
-    this.sessions.save(sessionId, publicUser);
+    await this.sessions.save(sessionId, publicUser);
     this.events.publish('auth.login', { userId: user.id });
     return { sessionId, user: publicUser };
   }
 
-  logout(sessionId) {
-    this.sessions.delete(sessionId);
+  async logout(sessionId) {
+    await this.sessions.delete(sessionId);
   }
 
-  currentUser(sessionId) {
+  async currentUser(sessionId) {
     return this.sessions.get(sessionId);
   }
 }

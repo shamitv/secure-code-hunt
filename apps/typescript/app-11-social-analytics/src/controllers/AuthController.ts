@@ -4,9 +4,9 @@ import { AuthService } from "../services/AuthService";
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  login = (req: Request, res: Response) => {
+  login = async (req: Request, res: Response) => {
     const { username, password } = req.body;
-    const session = this.authService.login(String(username ?? ""), String(password ?? ""));
+    const session = await this.authService.login(String(username ?? ""), String(password ?? ""));
     if (!session) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
@@ -23,8 +23,8 @@ export class AuthController {
     return res.json({ ok: true });
   };
 
-  me = (req: Request, res: Response) => {
-    const user = this.authService.currentUser(req.cookies?.sessionId);
+  me = async (req: Request, res: Response) => {
+    const user = await this.authService.currentUser(req.cookies?.sessionId);
     if (!user) {
       return res.status(401).json({ error: "Not authenticated" });
     }

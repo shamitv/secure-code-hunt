@@ -1,19 +1,21 @@
 class SessionCache {
-  constructor() {
-    this.sessions = new Map();
+  constructor(redisClient) {
+    this.redis = redisClient;
   }
 
-  save(sessionId, user) {
-    this.sessions.set(sessionId, user);
+  async save(sessionId, user) {
+    await this.redis.setEx('session:' + sessionId, 86400, JSON.stringify(user));
   }
 
-  get(sessionId) {
-    return sessionId ? this.sessions.get(sessionId) : undefined;
+  async get(sessionId) {
+    if (!sessionId) return undefined;
+    const data = await this.redis.get('session:' + sessionId);
+    return data ? JSON.parse(data) : undefined;
   }
 
-  delete(sessionId) {
+  async delete(sessionId) {
     if (sessionId) {
-      this.sessions.delete(sessionId);
+      await this.redis.del('session:' + sessionId);
     }
   }
 }

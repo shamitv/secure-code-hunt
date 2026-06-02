@@ -20,6 +20,8 @@ Java 17, Spring Boot 3.x, Spring MVC, Spring Security, Spring Data JPA, Thymelea
 ## Security Benchmarking
 Vulnerabilities are intentionally planted for OWASP Top 10: 2021 benchmarking. Ground-truth details are maintained in [`.vulns`](.vulns).
 
+> For system architecture details, see [docs/architecture.md](docs/architecture.md).
+
 ---
 
 ## Chained Vulnerability Scenario

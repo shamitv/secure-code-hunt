@@ -43,6 +43,76 @@
       "description": "Session token cookie is set without httpOnly or secure flags.",
       "severity": "medium",
       "cwe": "CWE-1004"
+    },
+    {
+      "owasp_id": "A04",
+      "category": "Insecure Design",
+      "location": "src/services/ScheduleValidator.ts",
+      "method": "validateSlot",
+      "line_range": "8-15",
+      "description": "Schedule validation accepts allowOverride=true parameter to bypass overlap checks, enabling double-booking.",
+      "severity": "medium",
+      "cwe": "CWE-602"
+    },
+    {
+      "owasp_id": "A08",
+      "category": "Software and Data Integrity Failures",
+      "location": "src/consumers/PrescriptionConsumer.ts",
+      "method": "processPrescription",
+      "line_range": "22-35",
+      "description": "Prescription Kafka consumer deserializes payload via JSON.parse without schema validation, accepting arbitrary data.",
+      "severity": "medium",
+      "cwe": "CWE-502"
+    },
+    {
+      "owasp_id": "A09",
+      "category": "Security Logging and Monitoring Failures",
+      "location": "src/consumers/PrescriptionConsumer.ts",
+      "method": "processPrescription",
+      "line_range": "22-35",
+      "description": "Prescription consumer writes to prescription_log without inserting an audit trail entry, making tampering undetectable.",
+      "severity": "medium",
+      "cwe": "CWE-778"
+    },
+    {
+      "owasp_id": "A03",
+      "category": "Injection",
+      "location": "src/search/PatientSearchClient.ts",
+      "method": "searchPatients",
+      "line_range": "17-26",
+      "description": "Elasticsearch query DSL is built with raw string concatenation of user input, enabling query injection.",
+      "severity": "high",
+      "cwe": "CWE-89"
+    },
+    {
+      "owasp_id": "A10",
+      "category": "Server-Side Request Forgery",
+      "location": "src/search/PatientSearchClient.ts",
+      "method": "searchPatients",
+      "line_range": "17-26",
+      "description": "Patient search accepts a search_url query parameter that overrides the Elasticsearch target host, enabling SSRF.",
+      "severity": "medium",
+      "cwe": "CWE-918"
+    },
+    {
+      "owasp_id": "A05",
+      "category": "Security Misconfiguration",
+      "location": "src/controllers/DebugController.ts",
+      "method": "status",
+      "line_range": "6-14",
+      "description": "Unauthenticated debug endpoint exposes internal service URLs (Postgres, Redis, Kafka, Elasticsearch, MongoDB).",
+      "severity": "low",
+      "cwe": "CWE-200"
+    },
+    {
+      "owasp_id": "A01",
+      "category": "Broken Access Control",
+      "location": "src/services/ClinicalNoteService.ts",
+      "method": "getNoteById",
+      "line_range": "8-10",
+      "description": "Clinical notes are returned by noteId without patient or doctor ownership checks.",
+      "severity": "medium",
+      "cwe": "CWE-639"
     }
   ],
   "chained_attacks": [
@@ -71,6 +141,58 @@
           "cwe": "CWE-639"
         }
       ]
+    },
+    {
+      "chain_id": "chain-02",
+      "chain_name": "Schedule Override \u2192 Missing Audit \u2192 Undetected Prescription Tampering",
+      "attack_scenario": "An attacker passes allowOverride=true to book an overlapping appointment, then the prescription Kafka consumer writes the resulting prescription data to PostgreSQL without any audit log entry, making the unauthorized prescription untraceable.",
+      "impact": "data_modification",
+      "components": [
+        {
+          "step": 1,
+          "owasp_id": "A04",
+          "description": "Schedule validator skips overlap check when allowOverride=true is passed.",
+          "location": "src/services/ScheduleValidator.ts",
+          "method": "validateSlot",
+          "severity": "low",
+          "cwe": "CWE-602"
+        },
+        {
+          "step": 2,
+          "owasp_id": "A09",
+          "description": "Prescription consumer writes to DB without inserting audit trail entries.",
+          "location": "src/consumers/PrescriptionConsumer.ts",
+          "method": "processPrescription",
+          "severity": "low",
+          "cwe": "CWE-778"
+        }
+      ]
+    },
+    {
+      "chain_id": "chain-03",
+      "chain_name": "Debug Topology Leak \u2192 SSRF Internal Pivot",
+      "attack_scenario": "An attacker hits GET /api/internal/status to retrieve Elasticsearch, Redis, Kafka, and MongoDB internal hostnames, then pivots to those services via the SSRF-vulnerable search_url parameter in patient search.",
+      "impact": "lateral_movement",
+      "components": [
+        {
+          "step": 1,
+          "owasp_id": "A05",
+          "description": "Debug endpoint exposes internal service URLs without authentication.",
+          "location": "src/controllers/DebugController.ts",
+          "method": "status",
+          "severity": "low",
+          "cwe": "CWE-200"
+        },
+        {
+          "step": 2,
+          "owasp_id": "A10",
+          "description": "Patient search accepts search_url parameter to override ES target host, enabling SSRF.",
+          "location": "src/search/PatientSearchClient.ts",
+          "method": "searchPatients",
+          "severity": "low",
+          "cwe": "CWE-918"
+        }
+      ]
     }
   ],
   "decoys": [
@@ -85,6 +207,22 @@
     {
       "location": "src/referenceGuards.ts",
       "description": "Reference ownership and callback guards demonstrate safe comparison and allowlist patterns."
+    },
+    {
+      "location": "src/services/ScheduleValidator.ts",
+      "description": "validateStrict method always checks for overlaps and ignores any allowOverride flag."
+    },
+    {
+      "location": "src/consumers/NotificationConsumer.ts",
+      "description": "Notification consumer validates payload schema and logs all operations before processing."
+    },
+    {
+      "location": "src/search/PatientSearchClient.ts",
+      "description": "searchPatientsStrict uses structured query object with no string interpolation."
+    },
+    {
+      "location": "src/search/PatientSearchClient.ts",
+      "description": "fetchMetadata validates hostname against an allowlist before making any HTTP request."
     }
   ]
 }

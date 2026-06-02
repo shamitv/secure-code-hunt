@@ -43,6 +43,8 @@ This application has been developed to contain hidden, realistic vulnerabilities
 
 For ground-truth details regarding the vulnerabilities, see the `.vulns` file in this directory.
 
+> For system architecture details, see [docs/architecture.md](docs/architecture.md).
+
 ---
 
 

@@ -1,0 +1,54 @@
+CREATE TABLE IF NOT EXISTS users (
+  id SERIAL PRIMARY KEY,
+  username VARCHAR(255) UNIQUE NOT NULL,
+  password VARCHAR(255) NOT NULL,
+  display_name VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS widgets (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  title VARCHAR(255) NOT NULL,
+  type VARCHAR(50) NOT NULL,
+  config JSONB DEFAULT '{}',
+  value VARCHAR(255)
+);
+
+CREATE TABLE IF NOT EXISTS dashboards (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  name VARCHAR(255) NOT NULL,
+  layout JSONB DEFAULT '[]',
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS share_tokens (
+  id SERIAL PRIMARY KEY,
+  dashboard_id INTEGER NOT NULL REFERENCES dashboards(id),
+  token VARCHAR(255),
+  created_by INTEGER REFERENCES users(id),
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS analytics_events (
+  id BIGSERIAL,
+  widget_id INTEGER,
+  event_type VARCHAR(50),
+  payload JSONB,
+  created_at TIMESTAMP DEFAULT NOW()
+) PARTITION BY RANGE (created_at);
+
+CREATE TABLE IF NOT EXISTS analytics_events_2026_01 PARTITION OF analytics_events
+  FOR VALUES FROM ('2026-01-01') TO ('2026-02-01');
+CREATE TABLE IF NOT EXISTS analytics_events_2026_02 PARTITION OF analytics_events
+  FOR VALUES FROM ('2026-02-01') TO ('2026-03-01');
+CREATE TABLE IF NOT EXISTS analytics_events_2026_03 PARTITION OF analytics_events
+  FOR VALUES FROM ('2026-03-01') TO ('2026-04-01');
+CREATE TABLE IF NOT EXISTS analytics_events_2026_04 PARTITION OF analytics_events
+  FOR VALUES FROM ('2026-04-01') TO ('2026-05-01');
+CREATE TABLE IF NOT EXISTS analytics_events_2026_05 PARTITION OF analytics_events
+  FOR VALUES FROM ('2026-05-01') TO ('2026-06-01');
+CREATE TABLE IF NOT EXISTS analytics_events_2026_06 PARTITION OF analytics_events
+  FOR VALUES FROM ('2026-06-01') TO ('2026-07-01');
+CREATE TABLE IF NOT EXISTS analytics_events_default PARTITION OF analytics_events
+  DEFAULT;

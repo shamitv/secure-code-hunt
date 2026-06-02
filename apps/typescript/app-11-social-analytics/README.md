@@ -18,6 +18,8 @@ A TypeScript Express analytics dashboard for campaign widgets, link previews, an
 | Search / Events | Internal search client, in-process event producer/consumer, Elasticsearch and Redpanda in Docker Compose |
 | Containerisation | Docker, Docker Compose |
 
+> For system architecture details, see [docs/architecture.md](docs/architecture.md).
+
 ---
 
 ## Features

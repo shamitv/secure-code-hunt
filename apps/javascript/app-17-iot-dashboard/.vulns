@@ -21,7 +21,7 @@
       "method": "refreshStatus",
       "line_range": "4-8",
       "description": "Device refresh fetches caller-controlled status URLs with axios and no internal network restrictions.",
-      "severity": "high",
+      "severity": "medium",
       "cwe": "CWE-918"
     },
     {
@@ -43,6 +43,66 @@
       "description": "Internal telemetry returns plaintext device tokens once the leaked telemetry token is supplied.",
       "severity": "medium",
       "cwe": "CWE-312"
+    },
+    {
+      "owasp_id": "A03",
+      "category": "Injection",
+      "location": "src/repositories/TelemetryRepository.js",
+      "method": "queryWithFilter",
+      "line_range": "23-27",
+      "description": "Raw SQL filter string concatenated into telemetry SELECT query allowing SQL injection.",
+      "severity": "medium",
+      "cwe": "CWE-89"
+    },
+    {
+      "owasp_id": "A01",
+      "category": "Broken Access Control",
+      "location": "src/controllers/DeviceController.js",
+      "method": "getDeviceTelemetry",
+      "line_range": "56-64",
+      "description": "Device telemetry endpoint returns telemetry data for any device without verifying user ownership.",
+      "severity": "medium",
+      "cwe": "CWE-639"
+    },
+    {
+      "owasp_id": "A08",
+      "category": "Software and Data Integrity Failures",
+      "location": "src/consumers/TelemetryConsumer.js",
+      "method": "processMessage",
+      "line_range": "49-52",
+      "description": "Consumer executes device rule scripts via eval() on untrusted input from Kafka iot-configs topic.",
+      "severity": "medium",
+      "cwe": "CWE-94"
+    },
+    {
+      "owasp_id": "A09",
+      "category": "Security Logging and Monitoring Failures",
+      "location": "src/consumers/TelemetryConsumer.js",
+      "method": "processMessage",
+      "line_range": "53-54",
+      "description": "No audit trail recorded for device command/telemetry event processing in Kafka consumer.",
+      "severity": "low",
+      "cwe": "CWE-778"
+    },
+    {
+      "owasp_id": "A07",
+      "category": "Identification and Authentication Failures",
+      "location": "src/ws/telemetryServer.js",
+      "method": "constructor",
+      "line_range": "7-8",
+      "description": "WebSocket server accepts connections without any authentication token or session validation.",
+      "severity": "medium",
+      "cwe": "CWE-306"
+    },
+    {
+      "owasp_id": "A03",
+      "category": "Injection",
+      "location": "src/services/DiagnosticsService.js",
+      "method": "searchLogs",
+      "line_range": "7-16",
+      "description": "Raw user-supplied query string concatenated into Elasticsearch query DSL body (query_string injection).",
+      "severity": "medium",
+      "cwe": "CWE-89"
     }
   ],
   "chained_attacks": [
@@ -80,6 +140,32 @@
           "cwe": "CWE-312"
         }
       ]
+    },
+    {
+      "chain_id": "chain-02",
+      "chain_name": "IDOR Telemetry Access \u2192 SQL Injection \u2192 Database Exfiltration",
+      "attack_scenario": "An authenticated user exploits IDOR on GET /api/devices/:id/telemetry to read any device's telemetry, then injects SQL via the POST /api/devices/:id/telemetry/query filter parameter to UNION SELECT from the users table, dumping password hashes and device secrets.",
+      "impact": "db_exfiltration",
+      "components": [
+        {
+          "step": 1,
+          "owasp_id": "A01",
+          "description": "Device telemetry endpoint returns telemetry for any device ID without verifying the requesting user's ownership.",
+          "location": "src/controllers/DeviceController.js",
+          "method": "getDeviceTelemetry",
+          "severity": "medium",
+          "cwe": "CWE-639"
+        },
+        {
+          "step": 2,
+          "owasp_id": "A03",
+          "description": "Telemetry query filter parameter is concatenated into raw SQL, enabling UNION SELECT injection against users/devices tables.",
+          "location": "src/repositories/TelemetryRepository.js",
+          "method": "queryWithFilter",
+          "severity": "medium",
+          "cwe": "CWE-89"
+        }
+      ]
     }
   ],
   "decoys": [
@@ -94,6 +180,38 @@
     {
       "location": "src/referenceGuards.js",
       "description": "Reference callback allowlist guard demonstrates safe URL validation."
+    },
+    {
+      "location": "src/services/TelemetryQueryService.js",
+      "description": "getDeviceTelemetryRange() uses parameterized queries for timestamp range filtering."
+    },
+    {
+      "location": "src/controllers/DeviceController.js -> detail()",
+      "description": "Public device detail returns device info by ID but strips deviceSecret field."
+    },
+    {
+      "location": "src/repositories/PgUserRepository.js",
+      "description": "User passwords are hashed with bcrypt before storage."
+    },
+    {
+      "location": "src/consumers/ValidatedConsumer.js",
+      "description": "Schema-validated consumer on separate validated-telemetry topic — safe deserialization with type checking."
+    },
+    {
+      "location": "src/search/DeviceSearchClient.js -> searchByDeviceName()",
+      "description": "Uses parameterized ES match query — not vulnerable to query DSL injection."
+    },
+    {
+      "location": "src/services/AuthService.js",
+      "description": "Auth events (login/logout) are properly published to event system for audit tracking."
+    },
+    {
+      "location": "src/services/DiagnosticsService.js -> searchLogsSafe()",
+      "description": "Uses parameterized match query instead of raw query_string — not vulnerable to DSL injection."
+    },
+    {
+      "location": "src/controllers/DeviceController.js -> detail()",
+      "description": "REST endpoint returns device detail — protected by session auth middleware, contrasting with unauthenticated WebSocket."
     }
   ]
 }

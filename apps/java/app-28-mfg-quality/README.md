@@ -4,6 +4,8 @@
 
 **Purpose:** Placeholder description for $app. This is a full‑stack sample application used to demonstrate common OWASP Top 10 vulnerabilities such as CORS misconfiguration, broken access control, injection, etc.
 
+> For system architecture details, see [docs/architecture.md](docs/architecture.md).
+
 ## How to Run
 
 \`\`\`sh
